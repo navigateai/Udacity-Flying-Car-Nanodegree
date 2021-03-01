@@ -210,6 +210,8 @@ def global_to_local(global_position, global_home):
 
 Visdom has several built-in plot types. We'll plot the NED position by using a scatter plot for NE (North-East) and a line plot for D (Altitude)
 
+![NED Plots](https://github.com/sagarnildass/Udacity-Flying-Car-Nanodegree/blob/master/Projects/1_FCND-Backyard-Flyer/visdom_ned_plots.png)
+
 
 ## Submission Requirements
 
