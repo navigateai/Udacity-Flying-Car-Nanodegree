@@ -1,0 +1,171 @@
+Setup Instructions (abbreviated)
+Read through the instructions below. If these commands look familiar to you, then you should use these VERY abbreviated instructions to get yourself set up.
+
+download miniconda and then install by opening the file/app that you download.
+
+git clone https://github.com/udacity/FCND-Term1-Starter-Kit.git to clone the starter kit and then cd FCND-Term1-Starter-Kit into that directory. If you have a windows machine, you must rename meta_windows_patch.yml to meta.yml as well.
+
+conda env create -f environment.yml to create the miniconda environment: this took me 20 minutes to run due to the large number of installs required.
+
+source activate fcnd to activate the environment (you'll need to do this whenever you want to work in this environment).
+
+Communicating with the Drone using the API
+In order to use the Drone API to communicate with the simulator. You first need to open the simulator.
+
+Next, you will need to activate the environment via your terminal using the following command
+
+source activate fcnd
+Now the drone can be manually started from a python / ipython shell! From the terminal start ipython:
+
+ipython
+Now you can initialize the drone with the following commands:
+
+from udacidrone import Drone
+from udacidrone.connection import MavlinkConnection
+conn = MavlinkConnection('tcp:127.0.0.1:5760', threaded=True)
+drone = Drone(conn)
+drone.start()
+Now take control of the drone and arm the rotors. Briefly pause in between executing code snippets as running them in immediate succession can cause strange drone behavior within the simulator.
+
+drone.take_control()
+drone.arm()
+Now set the drone's "home position"
+
+drone.set_home_position(drone.global_position[0], 
+                        drone.global_position[1], 
+                        drone.global_position[2])
+And now you can take off (to a height of 3 meters)!
+
+drone.takeoff(3)
+Once you're in the air, you can fly around by commanding the drone to waypoints.
+
+drone.cmd_position(5,0,3,0)
+Drone Commands
+There are many commands you can issue to the drone through this API. Some of them include...
+
+start(): Start receiving messages from the drone. If the connection is not threaded, this will block the code
+
+stop(): Terminate the connection with the drone and close the telemetry log
+
+take_control(): Set the command mode of the quad to guided.
+
+release_control(): Set the command mode of the quad to manual.
+
+arm(): Arms the motors of the quad, the rotors begin spinning. The drone cannot takeoff until armed.
+
+disarm(): Disarms the motors of the quad. The quadcopter cannot be disarmed in the air.
+
+cmd_position(north, east, down, heading): Command the vehicle to travel to the local position (north, east, down). Also commands the quad to maintain a specified heading.
+
+import time
+from enum import Enum
+import numpy as np
+from udacidrone import Drone
+from udacidrone.connection import MavlinkConnection
+from udacidrone.messaging import MsgID
+
+class Phases(Enum):
+    MANUAL = 0
+    ARMING = 1
+    TAKEOFF = 2
+    LANDING = 3
+    DISARMING = 4
+
+class UpAndDownFlyer(Drone):
+
+    def __init__(self, connection):
+        super().__init__(connection)
+        self.target_position = np.array([0.0, 0.0, 0.0])
+        self.in_mission = True
+
+        # initial state
+        self.flight_phase = Phases.MANUAL
+
+        # register all your callbacks here
+        self.register_callback(MsgID.LOCAL_POSITION,
+                               self.local_position_callback)
+        self.register_callback(MsgID.LOCAL_VELOCITY,
+                               self.velocity_callback)
+        self.register_callback(MsgID.STATE,
+                               self.state_callback)
+
+    def local_position_callback(self):
+        if self.flight_phase == Phases.TAKEOFF:
+
+            # coordinate conversion 
+            altitude = -1.0 * self.local_position[2]
+
+            # check if altitude is within 95% of target
+            if altitude > 0.95 * self.target_position[2]:
+                self.landing_transition()
+
+    def velocity_callback(self):
+        if self.flight_phase == Phases.LANDING:
+            if ((self.global_position[2] - self.global_home[2] < 0.1) and
+            abs(self.local_position[2]) < 0.01):
+                self.disarming_transition()
+
+    def state_callback(self):
+        if not self.in_mission:
+            return
+        if self.flight_phase == Phases.MANUAL:
+            self.arming_transition()
+        elif self.flight_phase == Phases.ARMING:
+            if self.armed:
+                self.takeoff_transition()
+        elif self.flight_phase == Phases.DISARMING:
+            if not self.armed:
+                self.manual_transition()
+
+    def arming_transition(self):
+        print("arming transition")
+        self.take_control()
+        self.arm()
+
+        # set the current location to be the home position
+        self.set_home_position(self.global_position[0],
+                               self.global_position[1],
+                               self.global_position[2])
+
+        self.flight_phase = Phases.ARMING
+
+    def takeoff_transition(self):
+        print("takeoff transition")
+        target_altitude = 3.0
+        self.target_position[2] = target_altitude
+        self.takeoff(target_altitude)
+        self.flight_phase = Phases.TAKEOFF
+
+    def landing_transition(self):
+        print("landing transition")
+        self.land()
+        self.flight_phase = Phases.LANDING
+
+    def disarming_transition(self):
+        print("disarm transition")
+        self.disarm()
+        self.flight_phase = Phases.DISARMING
+
+    def manual_transition(self):
+        print("manual transition")
+        self.release_control()
+        self.stop()
+        self.in_mission = False
+        self.flight_phase = Phases.MANUAL
+
+    def start(self):
+        self.start_log("Logs", "NavLog.txt")
+        print("starting connection")
+        super().start()
+        self.stop_log()
+
+if __name__ == "__main__":
+    conn = MavlinkConnection('tcp:127.0.0.1:5760', 
+                             threaded=False, 
+                             PX4=False)
+    drone = UpAndDownFlyer(conn)
+    time.sleep(2)
+    drone.start()
+
+
+
