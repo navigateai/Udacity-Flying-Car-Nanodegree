@@ -1,0 +1,25 @@
+Geodetic to NED
+
+In general, converting between spherical and Cartesian coordinates is a little tricky, but in this exercise we're going to make things easy by using a Python library called utm. UTM stands for Universal Transverse Mercator and it's a common coordinate system used in all kinds of mapping applications for describing positions on the earth in Cartesian coordinates.
+
+For the projects in this program, you won't be particularly concerned with the actual UTM coordinates of your vehicle, but rather, the difference in your position, or the position of some obstacle relative to a "global home" position or origin. In principle, you could define your global home position to be anywhere, but it usually makes the most sense to define home as either where your vehicle starts off from or some other local home base position.
+
+The UTM system divides the surface of the Earth into a number of zones that look like this:
+
+
+There are 60 numbered UTM zones covering the entire globe in the east-west direction and 24 zones labeled with letters of the alphabet from south to north. UTM coordinates are in units of metres, and your position within any zone is given as "eastings" and "northings", which you can think of as your position in metres along the east-west and north-south axes, respectively.
+
+With the Python utm library, you can quickly find the zone number and letter as well as easting and northing for a particular latitude and longitude (given in decimal degrees) like this:
+
+import utm
+(easting, northing, zone_number, zone_letter) = utm.from_latlon(latitude, longitude)
+Similarly, you can convert from a UTM position back to latitude and longitude:
+
+(latitude, longitude) = utm.to_latlon(easting, northing, zone_number, zone_letter)
+
+Geodetic to NED Exercise
+Now that you've seen the fundamentals of coordinate systems, it's your turn to implement a global_to_local() function that converts from global geodetic (longitude, latitude, altitude) to UTM (easting, northing, zone_number, zone_letter) and then to local NED (north, east, down). You will also implement the local_to_global() function that does the opposite.
+
+For the purposes of this exercise, we will assume that all positions are in the same UTM zone. So when we convert from geodetic to NED, you can simply ignore the zone number and letter. But keep in mind that in order to go back to geodetic coordinates from NED you need to first convert to UTM and specify the zone number and letter as well as actual eastings and northings in the zone!
+
+To convert from UTM to local NED, you will take the north and east differences between the current UTM and the "home" position. You can assume that the zero position of the "altitude" and "down" axes correspond to the same place along the z-axis, so the transformation of that coordinate just requires multiplying by -1.
