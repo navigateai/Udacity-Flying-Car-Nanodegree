@@ -23,3 +23,9 @@ Now that you've seen the fundamentals of coordinate systems, it's your turn to i
 For the purposes of this exercise, we will assume that all positions are in the same UTM zone. So when we convert from geodetic to NED, you can simply ignore the zone number and letter. But keep in mind that in order to go back to geodetic coordinates from NED you need to first convert to UTM and specify the zone number and letter as well as actual eastings and northings in the zone!
 
 To convert from UTM to local NED, you will take the north and east differences between the current UTM and the "home" position. You can assume that the zero position of the "altitude" and "down" axes correspond to the same place along the z-axis, so the transformation of that coordinate just requires multiplying by -1.
+
+In the previous video, you saw how a two dimensional robot, with two translational and one rotational degree of freedom, maps out a three dimensional configuration space. In general, flying robots have six degrees of freedom, three translational and three rotational. So the configuration space for a flying vehicle is six dimensional.
+
+However, for this exercise, and in the upcoming project, rather than compute the full six dimensional configuration space of your quadrotor, you're going to simplify things by instead adding a margin of infeasible space around all obstacles, such that no matter the orientation of the vehicle you won't collide with obstacles. That might sound like cheating, but realistically, whether it's a quadrotor or a flying car, you generally don't want to fly very close to obstacles so this simplification makes sense.
+
+
