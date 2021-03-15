@@ -1,0 +1,120 @@
+The Bresenham algorithm is a way of computing which cells are intersected by a line using only integer arithmetic.
+
+Bresenham developed this algorithm to draw lines in a graphics environment. It is simple, fast and can show which pixels need to be illuminated on a screen to plot a particular line. In our case, the screen is our grid map and the pixels are nodes or grid cells. Because we're using this algorithm for collision detection instead of illuminating pixels, we'll implement it in a slightly different way.
+
+Your goal here is to figure out how to get from p_1 = (x_1, y_1)p 
+1
+​	 =(x 
+1
+​	 ,y 
+1
+​	 ) to p_2 = (x_2, y_2)p 
+2
+​	 =(x 
+2
+​	 ,y 
+2
+​	 ) by starting at p_1p 
+1
+​	  and moving 1 unit in the x or y direction until you arrive at p_2p 
+2
+​	 . Whether you decide to move vertically or horizontally is determined by your current position with respect to the line connecting p_1p 
+1
+​	  and p_2p 
+2
+​	 . For example, moving from the point (0, 0) to (7, 5) would look like this:
+
+
+Identifying all possible cells in collision with the line
+
+The difference between this method and the typical computer graphics implementation is that in computer graphics, it's about drawing lines with pixels rather than collision detection so the cells illuminated end up missing some potential collisions along the way from p_1p 
+1
+​	  to p_2p 
+2
+​	 .
+
+There's a Python package called Bresenham that uses the computer graphics method. We can use this package and run the same process of identifying the cells that lie along a line from (0, 0) to (7, 5) as we did above and you'll see that the result looks a bit different:
+
+
+Computer graphics Bresenham method, where some cells in collision may be missed.
+
+With this second method, there are cells the line crosses that are not identified in the plot and this is because the restriction of only being able to move one step in either x or y is not imposed here. In other words, diagonal motions are allowed in the computer graphics version of this drawing method.
+
+What that means is that if you're using the graphics method, you could potentially miss some cells that are in collision if you're planning a trajectory that flies close to obstacles. This is probably fine if you've padded obstacles with a safety margin in creation of your grid map.
+
+Medial Axis Skeletonization
+
+The medial axis method is an image processing technique for identifying a "skeleton" of a binary image, or in this case, your grid map of obstacles and free space. In this exercise, you'll be using the medial_axis() transform method within the the Scikit-Image library.
+
+This method returns the one-pixel-wide skeleton of the image so for instance, when you run it on the grid you've created of the environment from the previous exercises, it looks like this:
+
+from skimage.morphology import medial_axis
+from skimage.util import invert
+
+# Assuming you've already created the grid
+# The medial_axis() method requires that we invert the grid image
+skeleton = medial_axis(invert(grid))
+plt.imshow(grid, origin='lower')
+plt.imshow(skeleton, origin='lower', alpha=0.7)
+plt.show()
+
+Now the black pixels represent the medial axis of the free space and now the entire connectivity of your free space is expressed as strings of adjacent pixels laid out along these medial axes between obstacles. So how can you use this for planning?
+
+Voronoi Graphs
+
+Voronoi diagrams can be tricky to construct, but thankfully Python's SciPy library already has an implementation of the Voronoi method built in! The way this method works is that you need to feed in a set of points that, in our case, represent the obstacles, and create a Voronoi() object that contains a graph of the "ridges" that define the midline in free space between the obstacles.
+
+For example, you can generate some random points and plot up the associated Voronoi graph like this:
+
+# Import numpy and Voronoi method and plotting routines
+import numpy as np
+from scipy.spatial import Voronoi, voronoi_plot_2d
+import matplotlib.pyplot as plt
+
+# Generate 50 random points with integer values between 0 and 49
+points = np.random.randint(50, size=(50, 2))
+# Extract the Voronoi diagram
+graph = Voronoi(points)
+# Plot it up!
+voronoi_plot_2d(graph)
+plt.show()
+And you get something that looks like this (will look different if you try this at home because values are random):
+
+
+In this image, you can think of the blue points as obstacles (inputs to the Voronoi method), and orange points are the intersections of the Voronoi ridges, or in other words, the nodes in a graph that navigates between the obstacles!
+
+In the real world, of course, obstacles are not points but they have some size and shape. Still, the Voronoi method can be a useful starting point for generating a planning graph around real world obstacles and that's what we're going to do next!
+
+Extracting Nodes and Edges
+For the example shown above, the edges in the graph or "ridges" as they're often called in the context of Voronoi diagrams, all represent feasible paths to navigate around those point obstacles. In the upcoming exercise, you'll start by creating a similar graph based on obstacle center points, but then you need to add an additional step to test whether edges in the graph are traversing free or infeasible space.
+
+Within the graph object created in the code snippet above, you've got all the information you need to extract nodes and edges and test for feasibility. The graph.vertices attribute contains the x and y positions of each of the vertices (or nodes), and graph.ridge_vertices contains the indices that identify each pair of points that define a ridge in the graph.vertices list. I think that will make more sense if I say it in code!
+
+# Assuming you've created a graph object as shown above
+# You can step through each pair of points that define a ridge like this
+edges = []  # Empty list to contain valid edges
+for v in graph.ridge_vertices:
+    p1 = graph.vertices[v[0]]
+    p2 = graph.vertices[v[1]]
+
+    # Then you can test each pair p1 and p2 for collision using Bresenham
+    # (need to convert to integer if using prebuilt Python package)
+    # If the edge does not hit an obstacle
+    # add it to the list
+    if not in_collision:
+        edges.append((p1, p2))
+
+
+Graph Search
+
+Alright now things are getting interesting! You've got a couple different methods for building a graph, and you've got some tools you developed previously to search through grids. You may have started to notice that grids and graphs actually have a lot in common, and with the medial axis transform in particular, we're really sort of straddling the divide between grids and graphs.
+
+The fact is that grids are really just a subset of graphs where all possible actions are of a fixed size and direction. Graphs on the other hand, are more flexible and allow you to define actions over any distance and in any direction. These similarities mean that you can take your grid-based search methods and easily modify them to work on a graph!
+
+Graph-based A*
+In the last two exercises you generated graph representations of your search space. The way A* worked for a grid was that in expanding your list of partial plans, you considered the sum of the cost function G and the heuristic H in deciding where to move to next.
+
+For graphs-based A*, you'll do essentially the same thing. The "Manhattan distance" as a heuristic no longer makes sense, but Euclidean distance can still serve as a perfectly valid heuristic estimate. For the cost function, you can now think of the cost of moving between two nodes as a function of the distance between those nodes in the graph. And with that, you have your graph-based A* implementation!
+
+NetworkX
+In order to make graph creation and manipulation simple, we're going to leverage a powerful package called NetworkX. With Networkx, it's easy to take the nodes and edges you found using the Voronoi and medial axis methods and arrange them into a single graph object. In this exercise you'll start with the Voronoi method to extract a graph where nodes and edges don't collide with obstacles. Then you'll use NetworkX to build up a graph object like this:

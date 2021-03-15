@@ -1,0 +1,68 @@
+Random Sampling
+
+Sampling your environment at random might seem like a strange idea, but it's actually a relatively efficient way to build up a set of feasible states through your free space. In this exercise you'll implement random sampling of your 3D environment to generate candidate nodes for a graph representation of your state space.
+
+The process you'll go through to generate a set of feasible states will be to first scatter points at random throughout your environment over some range in x, y, and z. Then for each of those points, you'll test whether it lies inside the ground plane polygon of any obstacles, and if so, whether or not it is above or below the height of the obstacle.
+
+You'll then discard points that are in collision with obstacles, or in other words, those that lie within the ground plane polygon of an obstacle and below the height of that obstacle. And what you're left with are a collection of states that lie in the free space!
+
+Python Shapely package
+In this exercise, you'll leverage a powerful Python package called Shapely. With this package you can define a polygon object using a set of coordinates like this:
+
+from shapely.geometry import Polygon
+coords = [(0, 0), (1, 0), (1, 1), (0, 1)]
+poly = Polygon(coords)
+You now have a polygon object with various attributes
+
+print(poly.area)
+print(poly.length)
+print(poly.bounds)
+> 1.0
+> 4.0
+> (0.0, 0.0, 1.0, 1.0)
+But more importantly, for our purposes here you can define a point using Shapely as well and then test whether that point lies within the polygon:
+
+from shapely.geometry import Point
+p1 = Point(0.5, 0.5)
+p2 = Point(1.5, 1.5)
+print(poly.contains(p1))
+print(poly.contains(p2))
+> True
+> False
+And simple as that you have a method for testing whether a point lies within the ground plane polygon of an obstacle! All you need to do is add in a check for height and you've got your random sampling test in order.
+
+Probabilistic Roadmap
+
+In the previous random sampling exercise, you saw that with the Python shapely library it's relatively easy to cast your obstacles as polygon objects and test for collision with points in a 2D plane. Then, by comparing the height of the obstacle with the z-dimension of the point in question, you could discard states in collision and retain all candidate states in free space.
+
+In this exercise, you'll connect the states that you've randomly sampled to create a graph representation of the free space in the environment. After that, you'll run search to find a path through this graph from start to goal!
+
+KD Trees
+In the last exercise, you saw that naively checking for collision between all points and all object polygons can be slow. We hinted there that the KD Tree data structure can help to alleviate this inefficiency by allowing you to quickly identify nearest neighbors to a point or polygon.
+
+You'll be faced with the same problem here when you attempt to connect nodes together into a graph, namely, trying to connect all nodes with all other nodes is costly and not really what you want to do anyway. So now is a good time to consider KD Trees more closely!
+
+
+Visual of the KD Tree in action
+
+The KD Tree is a space-partitioning data structure, which allows for fast search queries. The KD Tree achieves this by cutting the search space in half on each step of a query. If you're familiar with "big O notation", this brings the total search time down to O(m * log(n))O(m∗log(n)) from O(m*n)O(m∗n), where mm is the number of elements to compare to and nn is the number of elements in the KD Tree. So for example, if you want to find the closest neighbor to a single point, m=1m=1 and nn is equal to the total number of potential neighbors.
+
+The Python Scikit-Learn (sklearn) library has an easy to use implementation of KD Trees that we'll be introducing in this exercise. To find neighbors using this implementation, you'll use it like this:
+
+# Import KDTree and numpy
+from sklearn.neighbors import KDTree
+import numpy as np
+
+# Generate some random 3-dimensional points
+np.random.seed(0)
+points = np.random.random((10, 3))  # 10 points in 3 dimensions
+# Cast points into a KDTree data structure
+tree = KDTree(points)              
+# Extract indices of 3 closest points
+# Note: need to cast search point as a list 
+# and return 0th element only to get back list of indices
+idxs = tree.query([points[0]], k=3, return_distance=False)[0]              
+# indices of 3 closest neighbors (will vary due to random sample)
+print(idxs) 
+> [0 3 1]
+
