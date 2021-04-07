@@ -21,9 +21,6 @@ All the C++ code is in the [/cpp](./cpp) directory. The more interesting files a
 - [/cpp/config/QuadControlParams.txt](./cpp/config/QuadControlParams.txt): This file contains the configuration for the controller. While the simulator is running, you can modify this file, and the simulator will "refresh" those parameters on the next loop execution.
 - [/cpp/src/QuadControl.cpp](./cpp/src/QuadControl.cpp): This is where all the fun is, but I should not say this because this file contains the implementation of the controller only. Most of the time needed to pass the scenarios is spend on the parameter tuning.
 
-### Prerequisites
-
-Nothing extra needs to install but the IDE is necessary to compile the code. In my case XCode because I am using a Macbook. Please, follow the instructions on the [seed project README.md](https://github.com/udacity/FCND-Controls-CPP).
 
 ### Run the code
 
@@ -61,7 +58,7 @@ But the problem is you need to output roll and pitch rates; so, there is another
 
 ![From b to pq](./images/roll_pitch_from_b_to_pq.gif)
 
-It is important to notice you received thrust and thrust it need to be inverted and converted to acceleration before applying the equations. After the implementation is done, start tuning `kpBank` and `kpPQR`(again? yes, and it is not the last time) until the drone flies more or less stable upward:
+It is important to notice you received thrust and thrust it need to be inverted and converted to acceleration before applying the equations. After the implementation is done, start tuning `kpBank` and `kpPQR` until the drone flies more or less stable upward:
 
 ![C++ Scenario 2](./images/cpp-scenario-2.gif)
 
@@ -88,7 +85,7 @@ To test this, go back to scenario 2 and make sure the drone doesn't fall. In tha
 
 - [YawControl](./cpp/src/QuadControl.cpp#L270-L302): This is a simpler case because it is P controller. It is better to optimize the yaw to be between `[-pi, pi]`.
 
-Once all the code is implemented, put all the `kpYaw`,`kpPosXY`, `kpVelXY`, `kpPosZ` and `kpVelZ` to zero. Take a deep breath, and start tuning from the altitude controller to the yaw controller. It takes time. Here is a video of the scenario when it passes:
+Once all the code is implemented, put all the `kpYaw`,`kpPosXY`, `kpVelXY`, `kpPosZ` and `kpVelZ` to zero. Start tuning from the altitude controller to the yaw controller. It takes time. Here is a video of the scenario when it passes:
 
 ![C++ Scenario 3](./images/cpp-scenario-3.gif)
 
@@ -104,8 +101,7 @@ PASS: ABS(Quad2.Yaw) was less than 0.100000 for at least 1.000000 seconds
 
 #### Scenario 4: Non-idealities and robustness
 
-This is a fun scenario. Everything is coded and tuned already, right? Ok, we need to add an integral part to the altitude controller to move it from PD to PID controller. What happens to me here is that everything starts not working correctly, and I have to tune everything again, starting from scenario -1. Remember patience is a "virtue", and to it again. If you cannot and get frustrated talk to your peers, they will be able to give you hints. It is hard but doable:
-
+Here, we need to add an integral part to the altitude controller to move it from PD to PID controller. 
 ![C++ Scenario 4](./images/cpp-scenario-4.gif)
 
 This video is [cpp-scenario-4.mov](./videos/cpp-scenario-4.mov)
@@ -132,11 +128,9 @@ When the scenario is passing the test, you should see this line on the standard 
 PASS: ABS(Quad2.PosFollowErr) was less than 0.250000 for at least 3.000000 seconds
 ```
 
-There are a few optional scenarios on this project, but I was exhausted. Too many long hours were tuning parameters and finding bugs. There should be a lot of room for improvement. Here is the video of a multi-drone scenario:
+There are a few optional scenarios on this project. Here is the video of a multi-drone scenario:
 
 ![C++ Multidrone](./images/cpp-scenario-multi-drone.gif)
-
-No idea why some of them go nuts!!!!! (and then come back to the "formation".)
 
 **Post submit note** The tilt angle limit enforcing was missing on the `RollPitchControl`. Here is a video with no-crazy drones:
 
