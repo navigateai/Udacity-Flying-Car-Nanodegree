@@ -1,1 +1,1 @@
-../config/X_TestManyQuads.txt
+../config/5_TrajectoryFollow.txt
