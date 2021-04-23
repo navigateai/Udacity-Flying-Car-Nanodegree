@@ -7,19 +7,15 @@ InitStdDevs = .1, .1, .3, .1, .1, .3, .05
 
 QPosXYStd = .05
 QPosZStd = .05
-QVelXYStd = .2
+QVelXYStd = .05
 QVelZStd = .1
-QYawStd = .08
+QYawStd = .05
 
 # GPS measurement std deviations
 GPSPosXYStd = 1
-# 1
-GPSPosZStd = 300
-# 3
+GPSPosZStd = 3
 GPSVelXYStd = .1
-# .1
 GPSVelZStd = .3
-# .3
 
 # Magnetometer
 MagYawStd = .1
