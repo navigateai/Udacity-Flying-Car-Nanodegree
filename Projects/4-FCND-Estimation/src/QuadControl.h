@@ -25,7 +25,7 @@ public:
   // returns desired moments
   V3F BodyRateControl(V3F pqrCmd, V3F pqr);
 
-  // returns a desired roll and pitch rate
+  // returns a desired roll and pitch rate 
   V3F RollPitchControl(V3F accelCmd, Quaternion<float> attitude, float collThrustCmd);
 
   float AltitudeControl(float posZCmd, float velZCmd, float posZ, float velZ, Quaternion<float> attitude, float accelZCmd, float dt);
@@ -38,7 +38,7 @@ public:
   float kpBank, kpYaw;
   float KiPosZ;
   V3F kpPQR;
-
+  
   // limits & saturations
   float maxAscentRate, maxDescentRate;
   float maxSpeedXY;

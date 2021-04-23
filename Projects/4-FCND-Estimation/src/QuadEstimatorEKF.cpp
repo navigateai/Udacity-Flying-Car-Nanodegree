@@ -46,7 +46,7 @@ void QuadEstimatorEKF::Init()
 
   pitchEst = 0;
   rollEst = 0;
-
+  
   // GPS measurement model covariance
   R_GPS.setZero();
   R_GPS(0, 0) = R_GPS(1, 1) = powf(paramSys->Get(_config + ".GPSPosXYStd", 0), 2);
@@ -93,9 +93,12 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
   // (replace the code below)
   // make sure you comment it out when you add your own code -- otherwise e.g. you might integrate yaw twice
 
-  float predictedPitch = pitchEst + dtIMU * gyro.y;
-  float predictedRoll = rollEst + dtIMU * gyro.x;
-  ekfState(6) = ekfState(6) + dtIMU * gyro.z;	// yaw
+  auto qt = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6));
+  auto qt_bar = qt.IntegrateBodyRate(V3D(gyro.x, gyro.y, gyro.z), dtIMU);
+
+  float predictedPitch = qt_bar.Pitch();
+  float predictedRoll = qt_bar.Roll();
+  ekfState(6) = qt_bar.Yaw();  // yaw
 
   // normalize yaw to -pi .. pi
   if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;
@@ -161,7 +164,17 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   Quaternion<float> attitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, curState(6));
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  
+  // Acceleration of the vehicle in the inertial frame
+  const V3F a = attitude.Rotate_BtoI(accel);
 
+  predictedState(0) = curState(0) + curState(3) * dt;
+  predictedState(1) = curState(1) + curState(4) * dt;
+  predictedState(2) = curState(2) + curState(5) * dt;
+  predictedState(3) = curState(3) + a.x * dt;
+  predictedState(4) = curState(4) + a.y * dt;
+  predictedState(5) = curState(5) - 9.81f * dt + a.z * dt;
+  predictedState(6) = curState(6);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -188,7 +201,13 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
   //   that your calculations are reasonable
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
+  
+  RbgPrime(0, 0) = -cos(pitch) * sin(yaw);
+  RbgPrime(0, 1) = -sin(roll) * sin(pitch) * sin(yaw) - cos(roll) * cos(yaw);
+  RbgPrime(0, 2) = -cos(roll) * sin(pitch) * sin(yaw) + sin(roll) * cos(yaw);
+  RbgPrime(1, 0) = +cos(pitch) * cos(yaw);
+  RbgPrime(1, 1) = +sin(roll) * sin(pitch) * cos(yaw) - cos(roll) * sin(yaw);
+  RbgPrime(1, 2) = +cos(roll) * sin(pitch) * cos(yaw) + sin(roll) * sin(yaw);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -235,6 +254,20 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  MatrixXf accelMat(3, 1);
+  accelMat(0, 0) = accel.x;
+  accelMat(1, 0) = accel.y;
+  accelMat(2, 0) = accel.z;
+  const MatrixXf RgbPrime = GetRbgPrime(rollEst, pitchEst, ekfState(6));
+  const MatrixXf RgbAccel = RgbPrime * accelMat * dt;
+  gPrime(0, 3) = dt;
+  gPrime(1, 4) = dt;
+  gPrime(2, 5) = dt;
+  gPrime(3, 6) = RgbAccel(0, 0);
+  gPrime(4, 6) = RgbAccel(1, 0);
+  gPrime(5, 6) = RgbAccel(2, 0);
+  
+  ekfCov = gPrime * ekfCov * gPrime.transpose() + Q;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -259,6 +292,14 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   //  - The GPS measurement covariance is available in member variable R_GPS
   //  - this is a very simple update
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  
+  zFromX(0) = ekfState(0);
+  zFromX(1) = ekfState(1);
+  zFromX(2) = ekfState(2);
+  zFromX(3) = ekfState(3);
+  zFromX(4) = ekfState(4);
+  zFromX(5) = ekfState(5);
+  hPrime.setIdentity();
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -281,6 +322,12 @@ void QuadEstimatorEKF::UpdateFromMag(float magYaw)
   //  - The magnetomer measurement covariance is available in member variable R_Mag
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  float estYaw = ekfState(6);
+  if (estYaw - magYaw > +F_PI) estYaw -= 2.f*F_PI;
+  if (estYaw - magYaw < -F_PI) estYaw += 2.f*F_PI;
+
+  zFromX(0) = estYaw;
+  hPrime(0, 6) = 1;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
